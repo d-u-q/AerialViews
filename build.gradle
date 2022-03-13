@@ -14,8 +14,12 @@ buildscript {
         classpath 'com.google.firebase:firebase-crashlytics-gradle:2.8.1'
         classpath 'com.google.firebase:perf-plugin:1.4.1'
         classpath "org.jmailen.gradle:kotlinter-gradle:3.8.0"
+        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.20.0-RC1"
     }
+
 }
+
+apply plugin: "io.gitlab.arturbosch.detekt"
 
 allprojects {
     repositories {
