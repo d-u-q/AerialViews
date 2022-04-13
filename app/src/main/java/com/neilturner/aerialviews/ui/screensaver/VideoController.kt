@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
+import android.widget.TextView
 import androidx.databinding.DataBindingUtil
 import com.neilturner.aerialviews.R
 import com.neilturner.aerialviews.databinding.AerialActivityBinding
@@ -23,29 +24,34 @@ class VideoController(context: Context) : OnPlayerEventListener {
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
     private lateinit var playlist: VideoPlaylist
     private val textAlpha = 0.7f
-    private val binding: AerialActivityBinding
     private var previousVideo = false
     private var canSkip = false
+    private val videoView: VideoViewBinding
+    private val loadingView: View
+    private val loadingText: TextView
     val view: View
 
     init {
         val inflater = LayoutInflater.from(context)
-        binding = DataBindingUtil.inflate(inflater, R.layout.aerial_activity, null, false)
+        val binding = DataBindingUtil.inflate(inflater, R.layout.aerial_activity, null, false) as AerialActivityBinding
         binding.textPrefs = InterfacePrefs
-        binding.videoView0.controller = binding.videoView0.videoView
         binding.videoView0.videoView.setOnPlayerListener(this)
+
+        videoView = binding.videoView0
+        loadingView = binding.loadingView.root
+        loadingText = binding.loadingView.loadingText
         view = binding.root
 
         val service = VideoService(context)
         coroutineScope.launch {
             playlist = service.fetchVideos()
-            loadVideo(binding.videoView0, playlist.nextVideo())
+            loadVideo(videoView, playlist.nextVideo())
         }
     }
 
     fun stop() {
         currentPositionProgressHandler = null
-        binding.videoView0.videoView.release()
+        videoView.videoView.release()
     }
 
     fun skipVideo(previous: Boolean = false) {
@@ -53,18 +59,30 @@ class VideoController(context: Context) : OnPlayerEventListener {
         fadeOutCurrentVideo()
     }
 
+    private fun fadeOutLoading() {
+        loadingText
+            .animate()
+            .alpha(0f)
+            .setDuration(1000)
+            .withEndAction {
+                loadingText.visibility = TextView.GONE
+            }.start()
+    }
+
     private fun fadeOutCurrentVideo() {
         if (!canSkip) return
         canSkip = false
 
-        binding.loadingView
+        loadingView
             .animate()
             .alpha(1f)
             .setDuration(ExoPlayerView.DURATION)
             .withStartAction {
-                binding.loadingView.visibility = View.VISIBLE
+                loadingView.visibility = View.VISIBLE
             }
             .withEndAction {
+                currentPositionProgressHandler = null
+
                 val video = if (!previousVideo) {
                     playlist.nextVideo()
                 } else {
@@ -72,28 +90,35 @@ class VideoController(context: Context) : OnPlayerEventListener {
                 }
                 previousVideo = false
 
-                currentPositionProgressHandler = null
-                binding.videoView0.location.text = ""
-                binding.videoView0.location.alpha = textAlpha
-                loadVideo(binding.videoView0, video)
+                videoView.location.text = ""
+                videoView.location.alpha = textAlpha
+                loadVideo(videoView, video)
 
                 if (InterfacePrefs.alternateTextPosition) {
-                    binding.videoView0.isAlternateRun = !binding.videoView0.isAlternateRun
+                    videoView.isAlternateRun = !videoView.isAlternateRun
                 }
             }.start()
     }
 
     private fun fadeInNextVideo() {
-        if (binding.loadingView.visibility == View.VISIBLE) {
-            binding.loadingView
-                .animate()
-                .alpha(0f)
-                .setDuration(ExoPlayerView.DURATION)
-                .withEndAction {
-                    binding.loadingView.visibility = View.GONE
-                    canSkip = true
-                }.start()
+        if (loadingView.visibility == View.GONE)
+            return
+
+        var delay: Long = 0
+        if (loadingText.visibility == View.VISIBLE) {
+            delay = 1000
+            fadeOutLoading()
         }
+
+        loadingView
+            .animate()
+            .alpha(0f)
+            .setDuration(ExoPlayerView.DURATION)
+            .setStartDelay(delay)
+            .withEndAction {
+                loadingView.visibility = View.GONE
+                canSkip = true
+            }.start()
     }
 
     private fun loadVideo(videoBinding: VideoViewBinding, video: AerialVideo) {

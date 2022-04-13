@@ -13,8 +13,8 @@ android {
         applicationId "com.neilturner.aerialviews"
         minSdkVersion 23
         targetSdkVersion 31
-        versionCode 4 // Will be incremented automatically on release
-        versionName "1.2"
+        versionCode 5 // Will be incremented automatically on release
+        versionName "1.2.1"
 
         manifestPlaceholders.analyticsCollectionEnabled = false
         manifestPlaceholders.crashlyticsCollectionEnabled = false
@@ -93,7 +93,7 @@ dependencies {
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version")
 
-    def coroutines_version = '1.6.0'
+    def coroutines_version = '1.6.1'
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutines_version")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutines_version")
 
@@ -112,7 +112,7 @@ dependencies {
 
     // Firebase
     releaseImplementation(platform("com.google.firebase:firebase-bom:29.0.0"))
-    releaseImplementation('com.google.firebase:firebase-analytics-ktx:20.1.0')
+    releaseImplementation('com.google.firebase:firebase-analytics-ktx:20.1.2')
     releaseImplementation('com.google.firebase:firebase-crashlytics-ktx:18.2.9')
     releaseImplementation('com.google.firebase:firebase-perf-ktx:20.0.6')
 
