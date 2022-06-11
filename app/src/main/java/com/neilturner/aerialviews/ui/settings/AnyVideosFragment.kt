@@ -6,11 +6,11 @@ import android.Manifest
 import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.lifecycleScope
+import androidx.preference.EditTextPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
@@ -45,6 +45,8 @@ class AnyVideosFragment :
                 resetPreference()
             }
         }
+
+        limitTextInput()
     }
 
     override fun onDestroy() {
@@ -98,14 +100,21 @@ class AnyVideosFragment :
         }
     }
 
+    private fun limitTextInput() {
+        preferenceScreen.findPreference<EditTextPreference>("local_videos_filter_folder_name")?.setOnBindEditTextListener { it.setSingleLine() }
+    }
+
     private suspend fun testLocalVideosFilter() {
-        if (LocalVideoPrefs.filter_folder_name.isEmpty()) {
+        if (LocalVideoPrefs.filter_folder_name.isEmpty() &&
+            LocalVideoPrefs.filter_enabled
+        ) {
             showDialog("Error", "No folder has been specified.")
             return
         }
 
         val videos = mutableListOf<AerialVideo>()
         val localVideos = FileHelper.findAllMedia(requireContext())
+        var excluded = 0
         var filtered = 0
 
         for (video in localVideos) {
@@ -113,11 +122,13 @@ class AnyVideosFragment :
             val filename = uri.lastPathSegment!!
 
             if (!FileHelper.isVideoFilename(filename)) {
-                Log.i(TAG, "Probably not a video: $filename")
+                // Log.i(TAG, "Probably not a video: $filename")
+                excluded++
                 continue
             }
 
-            if (LocalVideoPrefs.filter_enabled && shouldFilter(uri)) {
+            if (LocalVideoPrefs.filter_enabled && FileHelper.shouldFilter(uri, LocalVideoPrefs.filter_folder_name)) {
+                // Log.i(TAG, "Filtering out video: $filename")
                 filtered++
                 continue
             }
@@ -125,20 +136,16 @@ class AnyVideosFragment :
             videos.add(AerialVideo(uri, ""))
         }
 
-        var message = "Videos found: ${localVideos.size}\n"
-        if (LocalVideoPrefs.filter_enabled) {
-            message += "Videos removed by filter: $filtered\n"
+        var message = "Videos found by Media Scanner: ${localVideos.size}\n"
+        message += "Videos with supported file extensions: ${localVideos.size - excluded}\n"
+        message += if (LocalVideoPrefs.filter_enabled) {
+            "Videos removed by filter: $filtered\n"
         } else {
-            message += "Videos removed by filter: (disabled)\n"
+            "Videos removed by filter: (disabled)\n"
         }
 
-        message += "Videos selected for playback: ${localVideos.size - filtered}"
+        message += "Videos selected for playback: ${localVideos.size - (filtered + excluded)}"
         showDialog("Results", message)
-    }
-
-    private fun shouldFilter(uri: Uri): Boolean {
-        val pathSegments = uri.pathSegments.dropLast(1) // x/y/z.mp4
-        return !pathSegments.last().contains(LocalVideoPrefs.filter_folder_name, true) // x/y
     }
 
     private fun requiresPermission(): Boolean {

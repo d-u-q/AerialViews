@@ -35,12 +35,12 @@ object FileHelper {
     }
 
     fun isLocalVideo(uri: Uri): Boolean {
-        return !uri.toString().contains("http://") &&
-            !uri.toString().contains("https://")
+        return !uri.toString().contains("http://", true) &&
+            !uri.toString().contains("https://", true)
     }
 
     fun isNetworkVideo(uri: Uri): Boolean {
-        return uri.toString().contains("smb://")
+        return uri.toString().contains("smb://", true)
     }
 
     fun fileExists(uri: Uri): Boolean {
@@ -49,7 +49,7 @@ object FileHelper {
     }
 
     fun isVideoFilename(filename: String): Boolean {
-        if (filename.startsWith("."))
+        if (filename.startsWith(".")) // Ignore hidden files
             return false
 
         if (filename.endsWith(".mov") ||
@@ -60,6 +60,18 @@ object FileHelper {
             return true
 
         return false
+    }
+
+    @Suppress("NAME_SHADOWING")
+    fun shouldFilter(uri: Uri, folder: String): Boolean {
+        if (folder.isEmpty())
+            return false
+
+        var folder = if (folder.first() != '/') "/$folder" else folder
+        folder = if (folder.last() != '/') "$folder/" else folder
+
+        // Log.i(TAG, "Looking for $folder in ${uri.path}")
+        return !uri.path!!.contains(folder, true)
     }
 
     fun filenameToTitleCase(uri: Uri): String {

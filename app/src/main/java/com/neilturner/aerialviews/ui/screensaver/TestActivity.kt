@@ -71,7 +71,9 @@ class TestActivity : Activity() {
         super.onStop()
         Log.i(TAG, "onStop")
         // Stop playback, animations, etc
-        videoController.stop()
+        if (this::videoController.isInitialized) {
+            videoController.stop()
+        }
     }
 
     override fun onDetachedFromWindow() {

@@ -15,26 +15,37 @@ import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector.ParametersBuilder
 import com.google.android.exoplayer2.video.VideoSize
+import com.google.firebase.crashlytics.ktx.crashlytics
+import com.google.firebase.ktx.Firebase
 import com.neilturner.aerialviews.models.BufferingStrategy
+import com.neilturner.aerialviews.models.prefs.AppleVideoPrefs
 import com.neilturner.aerialviews.models.prefs.GeneralPrefs
 import com.neilturner.aerialviews.services.SmbDataSourceFactory
 import com.neilturner.aerialviews.utils.FileHelper
 import com.neilturner.aerialviews.utils.PlayerHelper
+import java.lang.Runnable
 import kotlin.math.roundToLong
 
 class ExoPlayerView(context: Context, attrs: AttributeSet? = null) : SurfaceView(context, attrs), MediaPlayerControl, Player.Listener {
-    private var timerRunnable = Runnable { listener?.onAlmostFinished(this@ExoPlayerView) }
-    private val bufferingStrategy = BufferingStrategy.valueOf(GeneralPrefs.bufferingStrategy)
+    private var timerRunnable = Runnable { listener?.onAlmostFinished() }
     private val enableTunneling = GeneralPrefs.enableTunneling
     private val exceedRendererCapabilities = GeneralPrefs.exceedRenderer
     private val muteVideo = GeneralPrefs.muteVideos
     private var playbackSpeed = GeneralPrefs.playbackSpeed
     private var listener: OnPlayerEventListener? = null
+    private val bufferingStrategy: BufferingStrategy
     private val player: ExoPlayer
     private var aspectRatio = 0f
     private var prepared = false
 
     init {
+        // Use smaller buffer for local and network playback
+        bufferingStrategy = if (!AppleVideoPrefs.enabled) {
+            BufferingStrategy.SMALLER
+        } else {
+            BufferingStrategy.valueOf(GeneralPrefs.bufferingStrategy)
+        }
+
         player = buildPlayer(context)
         player.setVideoSurfaceView(this)
         player.addListener(this)
@@ -140,7 +151,7 @@ class ExoPlayerView(context: Context, attrs: AttributeSet? = null) : SurfaceView
         }
         if (!prepared && playbackState == Player.STATE_READY) {
             prepared = true
-            listener?.onPrepared(this)
+            listener?.onPrepared()
         }
         if (playWhenReady && playbackState == Player.STATE_READY) {
             removeCallbacks(timerRunnable)
@@ -151,12 +162,16 @@ class ExoPlayerView(context: Context, attrs: AttributeSet? = null) : SurfaceView
 
     override fun onPlayerError(error: PlaybackException) {
         super.onPlayerError(error)
-        error.printStackTrace()
+        // error?.printStackTrace()
+        error.cause?.let { Firebase.crashlytics.recordException(it) }
+        removeCallbacks(timerRunnable)
+        postDelayed({ listener?.onError() }, 3000)
     }
 
     override fun onPlayerErrorChanged(error: PlaybackException?) {
         super.onPlayerErrorChanged(error)
-        error?.printStackTrace()
+        // error?.printStackTrace()
+        error?.message?.let { Log.e(TAG, it) }
     }
 
     override fun onVideoSizeChanged(videoSize: VideoSize) {
@@ -200,8 +215,9 @@ class ExoPlayerView(context: Context, attrs: AttributeSet? = null) : SurfaceView
     }
 
     interface OnPlayerEventListener {
-        fun onAlmostFinished(view: ExoPlayerView?)
-        fun onPrepared(view: ExoPlayerView?)
+        fun onAlmostFinished()
+        fun onError()
+        fun onPrepared()
     }
 
     companion object {

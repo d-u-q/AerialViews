@@ -5,6 +5,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.TextView
+import android.widget.Toast
 import androidx.databinding.DataBindingUtil
 import com.neilturner.aerialviews.R
 import com.neilturner.aerialviews.databinding.AerialActivityBinding
@@ -19,11 +20,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class VideoController(context: Context) : OnPlayerEventListener {
+class VideoController(private val context: Context) : OnPlayerEventListener {
     private var currentPositionProgressHandler: (() -> Unit)? = null
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
     private lateinit var playlist: VideoPlaylist
-    private val textAlpha = 0.7f
+    private lateinit var currentVideo: AerialVideo
+    private val textAlpha = 1f
     private var previousVideo = false
     private var canSkip = false
     private val videoView: VideoViewBinding
@@ -45,7 +47,10 @@ class VideoController(context: Context) : OnPlayerEventListener {
         val service = VideoService(context)
         coroutineScope.launch {
             playlist = service.fetchVideos()
-            loadVideo(videoView, playlist.nextVideo())
+            if (playlist.size > 0)
+                loadVideo(videoView, playlist.nextVideo())
+            else
+                showLoadingError()
         }
     }
 
@@ -57,6 +62,10 @@ class VideoController(context: Context) : OnPlayerEventListener {
     fun skipVideo(previous: Boolean = false) {
         previousVideo = previous
         fadeOutCurrentVideo()
+    }
+
+    private fun showLoadingError() {
+        loadingText.text = R.string.loading_error.toString()
     }
 
     private fun fadeOutLoading() {
@@ -104,9 +113,7 @@ class VideoController(context: Context) : OnPlayerEventListener {
         if (loadingView.visibility == View.GONE)
             return
 
-        var delay: Long = 0
         if (loadingText.visibility == View.VISIBLE) {
-            delay = 1000
             fadeOutLoading()
         }
 
@@ -114,7 +121,6 @@ class VideoController(context: Context) : OnPlayerEventListener {
             .animate()
             .alpha(0f)
             .setDuration(ExoPlayerView.DURATION)
-            .setStartDelay(delay)
             .withEndAction {
                 loadingView.visibility = View.GONE
                 canSkip = true
@@ -123,7 +129,13 @@ class VideoController(context: Context) : OnPlayerEventListener {
 
     private fun loadVideo(videoBinding: VideoViewBinding, video: AerialVideo) {
         Log.i(TAG, "Playing: ${video.location} - ${video.uri} (${video.poi})")
+        currentVideo = video
         videoBinding.location.text = if (InterfacePrefs.showLocationStyle == LocationStyle.VERBOSE) video.poi[0]?.replace("\n", " ") ?: video.location else video.location
+        if (videoBinding.location.text.isBlank()) {
+            videoBinding.location.visibility = View.GONE
+        } else if (InterfacePrefs.showLocation) {
+            videoBinding.location.visibility = View.VISIBLE
+        }
 
         if (InterfacePrefs.showLocationStyle == LocationStyle.VERBOSE && video.poi.size > 1) { // everything else is static anyways
             val poiTimes = video.poi.keys.sorted()
@@ -159,12 +171,23 @@ class VideoController(context: Context) : OnPlayerEventListener {
         videoBinding.videoView.start()
     }
 
-    override fun onPrepared(view: ExoPlayerView?) {
+    override fun onPrepared() {
         fadeInNextVideo()
     }
 
-    override fun onAlmostFinished(view: ExoPlayerView?) {
+    override fun onAlmostFinished() {
         fadeOutCurrentVideo()
+    }
+
+    override fun onError() {
+        val message = "Error while trying to play ${currentVideo.uri}"
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+
+        if (loadingView.visibility == View.VISIBLE) {
+            loadVideo(videoView, playlist.nextVideo())
+        } else {
+            fadeOutCurrentVideo()
+        }
     }
 
     companion object {
