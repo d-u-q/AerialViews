@@ -16,7 +16,7 @@ class DreamActivity : DreamService() {
         Log.i(TAG, "onAttachedToWindow")
         // Setup
         isFullscreen = true
-        isInteractive = true
+        isInteractive = false
         videoController = VideoController(this)
         setContentView(videoController.view)
     }

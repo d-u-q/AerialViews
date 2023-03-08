@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+<!--    &lt;!&ndash; regular &ndash;&gt;-->
+<!--    <font-->
+<!--        android:font="@font/opensans"-->
+<!--        android:fontStyle="normal"-->
+<!--        android:fontWeight="400"-->
+
+<!--        app:font="@font/opensans"-->
+<!--        app:fontStyle="normal"-->
+<!--        app:fontWeight="400" />-->
+
+<!--    &lt;!&ndash; italic &ndash;&gt;-->
+<!--    <font-->
+<!--        android:font="@font/opensans_italic"-->
+<!--        android:fontStyle="italic"-->
+<!--        android:fontWeight="400"-->
+
+<!--        app:font="@font/opensans_italic"-->
+<!--        app:fontStyle="italic"-->
+<!--        app:fontWeight="400" />-->
+
+<!--    &lt;!&ndash; bold &ndash;&gt;-->
+<!--    <font-->
+<!--        android:font="@font/opensans_bold"-->
+<!--        android:fontStyle="normal"-->
+<!--        android:fontWeight="700"-->
+
+<!--        app:font="@font/opensans_bold"-->
+<!--        app:fontStyle="normal"-->
+<!--        app:fontWeight="700" />-->
+</font-family>
